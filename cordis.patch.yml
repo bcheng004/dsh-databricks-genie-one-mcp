@@ -1,0 +1,15 @@
+# Inserts the Genie One MCP client row. The URL below is a placeholder: name your
+# workspace in your profile's cordis.patch.yml as an `- id: mcp-genie-one`
+# override, or activation fails on an unresolvable host. See README.md > Install.
+- insert:
+    - id: mcp-genie-one
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: genie_one
+        transport: streamable-http
+        url: https://YOUR-WORKSPACE.cloud.databricks.com/ai-gateway/mcp-services/system.ai.genie_one_mcp
+        headers:
+          Authorization: 'Bearer ${credential:DATABRICKS_API_KEY}'
+        expandTemplates: true
+        toolCallTimeoutMs: 120000
+        failOnStartupError: true

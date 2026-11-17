@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Databricks Genie One MCP",
+    "description": "Adds the Databricks Genie One MCP server as four agent tools, so questions about enterprise data are answered by Genie instead of by guessing at SQL. Genie resolves business terms, metric definitions and table relationships through Genie Ontology, then returns a grounded answer with a deep link back into Databricks. Ask with mcp__genie_one__genie_ask, follow an in-flight answer with mcp__genie_one__genie_poll_response until its status is completed, read a query's rows with mcp__genie_one__genie_get_query_result, and stop one with mcp__genie_one__genie_cancel_response. Calls go through Unity Gateway, so Unity Gateway grants and policies govern them in addition to the caller's own table and warehouse permissions. The bearer comes from the DATABRICKS_API_KEY credential reference at runtime, so a rotating OAuth token keeps working and reconnects the connection when it changes, with no secret in configuration. Requires the workspace to expose the system.ai.genie_one_mcp service and the caller to be allowed to invoke it. This plugin makes no requests of its own beyond that MCP connection."
+  }
+}
