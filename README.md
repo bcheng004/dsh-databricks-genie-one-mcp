@@ -6,6 +6,8 @@ blocking question-and-answer tool, all over the same Genie One MCP server.
 Genie grounds answers in Genie Ontology — business terms, metric definitions and
 table relationships — and returns a deep link back into the Databricks UI.
 
+![The Databricks Genie One plugin page in DeepSeek Harness, showing its description and tool list](docs/deepseek-harness-plugin.webp)
+
 ## What you get
 
 | Tool | Purpose |
