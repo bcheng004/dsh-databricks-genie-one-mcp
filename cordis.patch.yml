@@ -1,6 +1,9 @@
-# Inserts the Genie One MCP client row. The URL below is a placeholder: name your
-# workspace in your profile's cordis.patch.yml as an `- id: mcp-genie-one`
-# override, or activation fails on an unresolvable host. See README.md > Install.
+# One plugin, two rows over the same Genie One MCP server:
+#   mcp-genie-one  — the four granular MCP tools (ask, poll, query result, cancel)
+#   genie-answer   — one blocking tool that asks, polls, and returns the answer
+# Both carry a placeholder workspace: name yours in your profile's
+# cordis.patch.yml with `- id: mcp-genie-one` and `- id: genie-answer` overrides,
+# or activation fails on an unresolvable host. See README.md > Install.
 - insert:
     - id: mcp-genie-one
       name: '@deepseek-ai/dsh-mcp-client'
@@ -13,3 +16,10 @@
         expandTemplates: true
         toolCallTimeoutMs: 120000
         failOnStartupError: true
+    - id: genie-answer
+      name: '@local/dsh-databricks-genie-one-mcp'
+      config:
+        url: https://YOUR-WORKSPACE.cloud.databricks.com/ai-gateway/mcp-services/system.ai.genie_one_mcp
+        ref: DATABRICKS_API_KEY
+        pollIntervalMs: 3000
+        deadlineMs: 600000

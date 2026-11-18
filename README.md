@@ -1,39 +1,46 @@
 # @local/dsh-databricks-genie-one-mcp
 
-Connects DeepSeek Harness to the Databricks **Genie One** MCP server, so the
-agent can answer questions about enterprise data by asking Genie instead of
-guessing at SQL.
+Databricks **Genie One** for DeepSeek Harness: four granular MCP tools plus one
+blocking question-and-answer tool, all over the same Genie One MCP server.
 
 Genie grounds answers in Genie Ontology — business terms, metric definitions and
 table relationships — and returns a deep link back into the Databricks UI.
 
 ## What you get
 
-The server is exposed as `mcp__genie_one__<tool>`, and Genie's lifecycle maps
-onto four tools:
-
 | Tool | Purpose |
 |---|---|
-| `genie_ask` | Ask a question. Returns `conversation_id`, `response_id` and an initial state; pass `conversation_id` to continue a thread. |
-| `genie_poll_response` | Fetch the current state of an in-flight or finished response as Markdown, plus `status`, `deep_link` and query items. |
-| `genie_get_query_result` | Read the schema and inline rows for one SQL query Genie ran, once a response is `completed`. |
-| `genie_cancel_response` | Stop a response that is still generating. |
+| `genie_answer` | Ask a question and **wait** for the finished answer. One call in, one grounded Markdown answer out. |
+| `mcp__genie_one__genie_ask` | Start a question. Returns `conversation_id`, `response_id`, and an in-flight state. |
+| `mcp__genie_one__genie_poll_response` | Fetch the current state as Markdown, plus `status`, `deep_link` and query items. |
+| `mcp__genie_one__genie_get_query_result` | Read the schema and inline rows for one SQL query Genie ran. |
+| `mcp__genie_one__genie_cancel_response` | Stop a response that is still generating. |
 
-An answer therefore takes a few calls: ask, poll until `completed`, then read
-rows if the question needs actual data rather than prose.
+### Which one to reach for
 
-## Why this is a bundle and not a tool plugin
+Genie is asynchronous by design. The MCP tools expose that honestly, which is
+right for a long investigation — you see the SQL as it is written, keep the
+answer resumable, and can cancel it. The cost is that the polling loop lives in
+the model's hands, and a model that polls once then stops reports a
+half-finished answer.
 
-The MCP server owns everything that made a hand-written integration expensive:
-the asynchronous ask/poll/cancel lifecycle, conversation state, SQL execution,
-result rendering, and the deep link. The DSH side is one configuration row.
+`genie_answer` exists for that reason: it runs the whole cycle inside one tool
+call — ask, then poll every few seconds until the response completes, fails, or
+passes its deadline — and returns only the finished text.
+
+| Situation | Tool |
+|---|---|
+| One question, one answer | `genie_answer` |
+| Want to watch SQL being written | the `mcp__genie_one__*` tools |
+| Need the rows behind a query | `genie_get_query_result` |
+| Want to stop a running answer | `genie_cancel_response` |
 
 ## Install
 
 Requirements:
 
 - The workspace exposes `system.ai.genie_one_mcp` through Unity Gateway, and the
-  caller is allowed to invoke it (Unity Gateway grant or policy).
+  caller may invoke it (Unity Gateway grant or policy).
 - A credential reference holding a workspace bearer token. The companion
   [dsh-databricks-oauth](https://github.com/bcheng004/dsh-databricks-oauth)
   bundle fills `DATABRICKS_API_KEY` with a rotating OAuth token, which is what
@@ -41,28 +48,24 @@ Requirements:
 
 ### 1. Add the bundle
 
-**Plugins → Add plugin** accepts a package name, Git address, tarball, or
-absolute local path:
-
 ```
 github:bcheng004/dsh-databricks-genie-one-mcp
 ```
 
-The same install from a shell, pinned to a commit so DSH can offer **Update**
-later:
+or, pinned to a commit so DSH can offer **Update** later:
 
 ```sh
 dsh plugin --profile <profile-name> add github:bcheng004/dsh-databricks-genie-one-mcp#<commit>
 ```
 
-The bundle ships a placeholder workspace on purpose. Activation fails with an
-unresolvable host until the next step names yours, which is easier to diagnose
-than a row that silently starts with no Genie tools.
+The bundle ships a placeholder workspace. Activation fails with an unresolvable
+host until the next step names yours, which is easier to diagnose than a plugin
+that silently starts with no Genie tools.
 
 ### 2. Name your workspace
 
-Set your endpoint in your own profile's `cordis.patch.yml`. An override replaces
-the row's complete configuration, so repeat every field:
+Both rows need your endpoint, and an override replaces a row's complete
+configuration, so set both in your profile's `cordis.patch.yml`:
 
 ```yaml
 - id: mcp-genie-one
@@ -76,39 +79,59 @@ the row's complete configuration, so repeat every field:
     expandTemplates: true
     toolCallTimeoutMs: 120000
     failOnStartupError: true
+
+- id: genie-answer
+  name: '@local/dsh-databricks-genie-one-mcp'
+  config:
+    url: https://<workspace-hostname>/ai-gateway/mcp-services/system.ai.genie_one_mcp
+    ref: DATABRICKS_API_KEY
+    pollIntervalMs: 3000
+    deadlineMs: 600000
 ```
 
 ## Configuration
 
+The MCP row (`mcp-genie-one`):
+
 | Field | Default | Meaning |
 |---|---|---|
-| `serverName` | `genie_one` | Prefix of every tool name: `mcp__genie_one__genie_ask`. |
+| `serverName` | `genie_one` | Prefix of the four tool names. |
 | `transport` | `streamable-http` | The Unity Gateway endpoint is Streamable HTTP. |
-| `url` | — | `https://<workspace-hostname>/ai-gateway/mcp-services/system.ai.genie_one_mcp`. |
-| `headers.Authorization` | — | `Bearer ${credential:REF}`. Resolved per connection, never stored in configuration. |
-| `expandTemplates` | `true` | Resolves `${credential:REF}` at runtime and redacts the resolved value from diagnostics. **Required** for a rotating token. |
-| `toolCallTimeoutMs` | `120000` | Genie work is slower than a typical tool; the MCP client default of 60 s is tight. |
-| `failOnStartupError` | `true` | A rejected activation beats silently starting with zero Genie tools. |
+| `url` | — | The workspace's `system.ai.genie_one_mcp` endpoint. |
+| `headers.Authorization` | — | `Bearer ${credential:REF}`, resolved per connection and never stored in configuration. |
+| `expandTemplates` | `true` | Resolves `${credential:REF}` at runtime and redacts it from diagnostics. **Required** for a rotating token; a `!!js` expression would freeze the token at load. |
+| `toolCallTimeoutMs` | `120000` | Per-call limit. Genie work outlasts the 60 s client default. |
+| `failOnStartupError` | `true` | A rejected activation beats starting with zero tools. |
 
-`expandTemplates` is the part that matters. A `!!js` expression would run once
-at load and freeze whatever token existed then; the template path re-resolves
-the reference and rebuilds the connection when the credential changes, which is
-what keeps an hourly-rotating OAuth token working.
+The wrapper row (`genie-answer`):
+
+| Field | Default | Meaning |
+|---|---|---|
+| `url` | — | Same endpoint. Required; empty refuses activation. |
+| `ref` | `DATABRICKS_API_KEY` | Credential reference, resolved per request so a rotated token applies to the next answer. |
+| `pollIntervalMs` | `3000` | Delay between polls. |
+| `deadlineMs` | `600000` | Hard bound on one answer. Exceeding it fails with the conversation id instead of hanging. |
+| `requestTimeoutMs` | `60000` | Per-request bound, including session negotiation. |
+| `maxAnswerChars` | `24000` | Truncates a long answer, marking how much was cut. |
+
+`genie_answer` declares `timeoutMs = deadlineMs + 30s` on its tool definition,
+so the harness limit sits above the plugin's own deadline and the plugin fails
+first with an actionable message.
 
 ## Requirements and limitations
 
 - **Governed twice.** Unity Gateway grants and policies decide who may invoke
-  the service; the caller's own Unity Catalog and warehouse permissions decide
-  what the generated SQL can read. Both must allow the question.
-- **Polling costs turns.** One business question is typically two to four tool
-  calls. A model that asks and stops will report a half-finished answer.
-- **Results are server-sized.** `genie_get_query_result` returns the rows the
-  server chooses to inline; a wide result still lands in the model's context.
-- **MCP session state.** The client keeps the negotiated session per connection;
-  a reconnect re-syncs tools rather than accumulating duplicates.
-- The plugin issues no network calls of its own beyond the MCP connection.
+  the service; the caller's Unity Catalog and warehouse permissions decide what
+  generated SQL can read.
+- **`genie_answer` blocks.** It occupies one tool slot for as long as Genie
+  takes and shows no incremental progress, because a tool returns a value rather
+  than a stream. Use the MCP tools when progress matters.
+- **The MCP server owns the answers.** Answers are attributed to the
+  credential's identity, and a workspace without the service answers `404`.
+- **Two connections.** The MCP row keeps a long-lived session; the wrapper opens
+  one per answer. They are independent, so one failing leaves the other usable.
 
 ## Turning it off
 
-Disable the bundle in **Plugins**, or remove the row. Nothing is written to the
-credential store, so disabling has no side effects beyond the tools disappearing.
+Disable the bundle in **Plugins**. Nothing is written to the credential store,
+so disabling only removes the tools.

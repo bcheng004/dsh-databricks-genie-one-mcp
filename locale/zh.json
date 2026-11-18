@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Databricks Genie One MCP",
-    "description": "将 Databricks Genie One MCP 服务器接入为四个智能体工具，让关于企业数据的问题由 Genie 作答，而不是靠猜测编写 SQL。Genie 通过 Genie Ontology 解析业务术语、指标定义与表关系，返回有依据的答案，并附带回 Databricks 的深层链接。用 mcp__genie_one__genie_ask 提问，用 mcp__genie_one__genie_poll_response 跟踪进行中的回答直到状态为 completed，用 mcp__genie_one__genie_get_query_result 读取查询结果行，用 mcp__genie_one__genie_cancel_response 停止回答。调用经由 Unity Gateway，因此除调用者自身的表与 SQL 仓库权限外，还受 Unity Gateway 的授权与策略管控。令牌在运行时取自 DATABRICKS_API_KEY 凭据引用，因此轮换的 OAuth 令牌可以持续生效，并在变更时自动重连，配置中不保存任何密钥。需要工作区提供 system.ai.genie_one_mcp 服务，且调用者被允许调用该服务。本插件除该 MCP 连接外不发起任何请求。"
+    "title": "Databricks Genie One",
+    "description": "以五个工具将 Databricks Genie One 接入智能体。genie_answer 一次调用即可提问并等待最终答案，在响应完成或超过截止时间前持续轮询。另有四个 MCP 工具以更细的粒度暴露同一服务：mcp__genie_one__genie_ask 发起提问，genie_poll_response 以 Markdown 展示进度，genie_get_query_result 读取查询返回的行，genie_cancel_response 停止运行中的回答。Genie 通过 Genie Ontology 解析业务术语、指标定义与表关系，并返回回 Databricks 的深层链接。单次提问请用 genie_answer；想观察 SQL 生成过程或需要取消时请用 MCP 工具。调用经由 Unity Gateway，其授权与策略与调用者自身的表及 SQL 仓库权限一并生效。令牌在运行时取自 DATABRICKS_API_KEY 凭据引用，因此轮换的 OAuth 令牌可持续生效，配置中不保存任何密钥。需要工作区提供 system.ai.genie_one_mcp，且调用者被允许调用该服务。"
   }
 }
