@@ -120,6 +120,27 @@ The wrapper row (`genie-answer`):
 so the harness limit sits above the plugin's own deadline and the plugin fails
 first with an actionable message.
 
+## Pairing with the OAuth bundle
+
+Both rows authenticate with the **same** credential reference, so the
+[dsh-databricks-oauth](https://github.com/bcheng004/dsh-databricks-oauth) bundle
+supplies a fresh token every hour and neither row ever stores a secret:
+
+| Row | How it handles a rotation |
+|---|---|
+| `mcp-genie-one` | `Authorization: 'Bearer ${credential:DATABRICKS_API_KEY}'` with `expandTemplates: true` — the client rebuilds the connection when the resolved value changes |
+| `genie-answer` | resolves `ref` on every request, so the next answer uses the new token |
+
+The `reconnect` block matters here: a credential-driven rebuild that fails
+transiently should retry rather than leave four tools missing for the hour. The
+default budget of 10 attempts can expire during a slow refresh; the patch asks
+for 30.
+
+Ordering is handled on the other side: the OAuth plugin completes activation
+only after its first mint, and it loads earlier in the bundle list, so this row
+connects against a token minted in the current session rather than one left over
+from the last one.
+
 ## Requirements and limitations
 
 - **Governed twice.** Unity Gateway grants and policies decide who may invoke

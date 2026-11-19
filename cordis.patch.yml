@@ -16,6 +16,10 @@
         expandTemplates: true
         toolCallTimeoutMs: 120000
         failOnStartupError: false
+        reconnect:
+          enabled: true
+          maxAttempts: 30
+          maxDelayMs: 30000
     - id: genie-answer
       name: '@local/dsh-databricks-genie-one-mcp'
       config:
