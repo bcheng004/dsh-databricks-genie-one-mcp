@@ -6,6 +6,14 @@ blocking question-and-answer tool, all over the same Genie One MCP server.
 Genie grounds answers in Genie Ontology — business terms, metric definitions and
 table relationships — and returns a deep link back into the Databricks UI.
 
+> **Works in tandem with [dsh-databricks-oauth](https://github.com/bcheng004/dsh-databricks-oauth).**
+> That bundle keeps the `DATABRICKS_API_KEY` reference filled with a rotating
+> OAuth access token, so every call here authenticates with a credential that
+> lasts an hour and renews itself — no personal access token is stored in
+> configuration. This plugin picks rotations up two ways: the MCP row rebuilds
+> its connection when the header value changes, and `genie_answer` re-reads the
+> reference on every request. See [Pairing with the OAuth bundle](#pairing-with-the-oauth-bundle).
+
 ![The Databricks Genie One plugin page in DeepSeek Harness, showing its description and tool list](docs/deepseek-harness-plugin.webp)
 
 ## What you get
