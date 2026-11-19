@@ -80,7 +80,7 @@ configuration, so set both in your profile's `cordis.patch.yml`:
       Authorization: 'Bearer ${credential:DATABRICKS_API_KEY}'
     expandTemplates: true
     toolCallTimeoutMs: 120000
-    failOnStartupError: true
+    failOnStartupError: false
 
 - id: genie-answer
   name: '@local/dsh-databricks-genie-one-mcp'
@@ -103,7 +103,7 @@ The MCP row (`mcp-genie-one`):
 | `headers.Authorization` | — | `Bearer ${credential:REF}`, resolved per connection and never stored in configuration. |
 | `expandTemplates` | `true` | Resolves `${credential:REF}` at runtime and redacts it from diagnostics. **Required** for a rotating token; a `!!js` expression would freeze the token at load. |
 | `toolCallTimeoutMs` | `120000` | Per-call limit. Genie work outlasts the 60 s client default. |
-| `failOnStartupError` | `true` | A rejected activation beats starting with zero tools. |
+| `failOnStartupError` | `false` | Keep `false`. When true, a single transient failure at startup rejects the row, and the four MCP tools then stay missing for the whole session because an unactivated row never reaches the reconnect loop. `false` lets the client's reconnect and credential-wait policy retry instead. |
 
 The wrapper row (`genie-answer`):
 

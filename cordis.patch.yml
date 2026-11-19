@@ -15,7 +15,7 @@
           Authorization: 'Bearer ${credential:DATABRICKS_API_KEY}'
         expandTemplates: true
         toolCallTimeoutMs: 120000
-        failOnStartupError: true
+        failOnStartupError: false
     - id: genie-answer
       name: '@local/dsh-databricks-genie-one-mcp'
       config:
